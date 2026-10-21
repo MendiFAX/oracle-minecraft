@@ -14,7 +14,7 @@ apt-get update -y
 apt-get install -y curl wget gpg python3 tar zstd iptables-persistent apt-transport-https
 
 # Oracle's Ubuntu image ships an iptables REJECT rule; allow Minecraft before it.
-iptables -I INPUT 6 -m state --state NEW -p tcp --dport 25565 -j ACCEPT
+iptables -I INPUT 1 -p tcp --dport 25565 -j ACCEPT
 netfilter-persistent save
 
 # 2 GB swap as a safety net
@@ -99,6 +99,7 @@ apt-get install -y "temurin-${JAVA}-jre" || apt-get install -y "temurin-${JAVA}-
 JAVA_BIN=$(ls -d /usr/lib/jvm/temurin-${JAVA}-*/bin/java | head -1)
 
 # --- Server config -----------------------------------------------------------
+set +x
 RCON_PASS=$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)
 echo "eula=true" > "$MC_DIR/eula.txt"
 cat > "$MC_DIR/server.properties" <<EOF
@@ -119,6 +120,7 @@ broadcast-rcon-to-ops=false
 white-list=false
 EOF
 
+set -x
 # Tiny RCON client (RCON port is NOT opened to the internet, local use only)
 cat > "$MC_DIR/rcon.py" <<'PY'
 import socket, struct, sys, re
