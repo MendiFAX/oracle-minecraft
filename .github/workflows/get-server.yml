@@ -1,0 +1,43 @@
+name: Get free Oracle server
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes; each run keeps trying for ~13 minutes
+  workflow_dispatch:
+
+concurrency:
+  group: oracle-launch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  actions: write
+
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet oci
+      - id: launch
+        env:
+          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_KEY: ${{ secrets.OCI_KEY }}
+          OCI_REGION: sa-santiago-1
+        run: python launch.py
+      - name: Notify and stop retrying
+        if: steps.launch.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Minecraft server created: ${{ steps.launch.outputs.ip }}" \
+            --body "Oracle gave us the server. Public IP: ${{ steps.launch.outputs.ip }}. Setup takes ~10 minutes after boot, then connect to ${{ steps.launch.outputs.ip }}:25565" || true
+          gh workflow disable get-server.yml --repo "$GITHUB_REPOSITORY"
